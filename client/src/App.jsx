@@ -360,73 +360,98 @@ export default function App() {
 
   // ---------- RENDER: NAV ----------
   const Nav = () => (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        alignItems: "center",
-        padding: "12px 20px",
-        borderBottom: "1px solid #ddd",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <strong>BookFlow</strong>
+    <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6 font-sans">
+      {/* Logo */}
+      <div className="flex items-center gap-2 mr-4">
+        <div className="w-8 h-8 rounded-lg bg-[#0d7561] flex items-center justify-center">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="3" />
+            <path strokeLinecap="round" d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          </svg>
+        </div>
+        <span className="font-bold text-gray-900 text-lg tracking-tight">BookFlow</span>
+      </div>
+      {/* Nav links */}
       <button
-        onClick={() => {
-          setView("shows");
-          setActiveShow(null);
-        }}
-        style={{ fontWeight: view === "shows" ? "bold" : "normal" }}
+        onClick={() => { setView("shows"); setActiveShow(null); }}
+        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+          view === "shows"
+            ? "bg-[#e6f4f1] text-[#0d7561]"
+            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+        }`}
       >
         Shows
       </button>
       <button
         onClick={() => setView("bookings")}
-        style={{ fontWeight: view === "bookings" ? "bold" : "normal" }}
+        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+          view === "bookings"
+            ? "bg-[#e6f4f1] text-[#0d7561]"
+            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+        }`}
       >
         My Bookings
       </button>
-      <span style={{ marginLeft: "auto", color: "#666", fontSize: 13 }}>{user?.name || user?.email}</span>
-      <button onClick={logout}>Log out</button>
-    </div>
+      {/* Spacer + user + logout */}
+      <div className="ml-auto flex items-center gap-3">
+        <span className="text-sm text-gray-500">{user?.name || user?.email}</span>
+        <button
+          onClick={logout}
+          className="text-sm font-medium text-gray-600 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
+        >
+          Log out
+        </button>
+      </div>
+    </nav>
   );
 
   // ---------- RENDER: BOOKINGS ----------
   if (view === "bookings") {
     return (
-      <div style={{ fontFamily: "sans-serif" }}>
+      <div className="min-h-screen bg-[#f0f2f5] font-sans">
         <Nav />
-        <div style={{ maxWidth: 600, margin: "30px auto", padding: 20 }}>
-          <h2>My Bookings</h2>
-          {bookingsLoading && <p>Loading your bookings...</p>}
-          {!bookingsLoading && bookings.length === 0 && (
-            <p style={{ color: "#666" }}>No bookings yet — go grab a seat.</p>
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">My Bookings</h2>
+
+          {bookingsLoading && (
+            <p className="text-gray-500 text-sm">Loading your bookings...</p>
           )}
-          {bookings.map((b) => (
-            <div key={b._id} style={{ border: "1px solid #ddd", borderRadius: 6, padding: 14, marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <strong>{b.show?.title || "Show"}</strong>
-                <span
-                  style={{
-                    fontSize: 12,
-                    padding: "2px 8px",
-                    borderRadius: 10,
-                    background: b.paymentStatus === "success" ? "#e8f5e9" : "#ffebee",
-                    color: b.paymentStatus === "success" ? "#2e7d32" : "#c62828",
-                  }}
-                >
-                  {b.paymentStatus}
-                </span>
-              </div>
-              <div style={{ color: "#666", fontSize: 13, marginTop: 4 }}>
-                {b.show?.venue} — {b.show && formatDate(b.show.startTime)}
-              </div>
-              <div style={{ marginTop: 6, fontSize: 13 }}>
-                Seats: {b.seats?.map((s) => s.seatLabel).join(", ")}
-              </div>
-              <div style={{ marginTop: 4, fontWeight: "bold" }}>₹{b.amount}</div>
+
+          {!bookingsLoading && bookings.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+              <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+              </svg>
+              <p className="text-gray-500 text-sm">No bookings yet — go grab a seat.</p>
             </div>
-          ))}
+          )}
+
+          <div className="flex flex-col gap-4">
+            {bookings.map((b) => (
+              <div key={b._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <p className="font-semibold text-gray-900 text-base">{b.show?.title || "Show"}</p>
+                  <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+                    b.paymentStatus === "success"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}>
+                    {b.paymentStatus === "success" ? "Confirmed" : "Failed"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {b.show?.venue} &mdash; {b.show && formatDate(b.show.startTime)}
+                </p>
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Seats:</span> {b.seats?.map((s) => s.seatLabel).join(", ")}
+                  </p>
+                  <p className="text-base font-bold text-[#0d7561]">₹{b.amount}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -435,27 +460,46 @@ export default function App() {
   // ---------- RENDER: SHOWS LIST ----------
   if (view === "shows" || !activeShow) {
     return (
-      <div style={{ fontFamily: "sans-serif" }}>
+      <div className="min-h-screen bg-[#f0f2f5] font-sans">
         <Nav />
-        <div style={{ maxWidth: 500, margin: "30px auto", padding: 20 }}>
-          <h2>Shows</h2>
-          {showsLoading && <p>Loading shows...</p>}
-          {!showsLoading && shows.length === 0 && (
-            <p style={{ color: "#666" }}>No shows yet — create one via POST /api/shows (see README).</p>
+        <div className="max-w-xl mx-auto px-4 py-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Shows</h2>
+
+          {showsLoading && (
+            <p className="text-gray-500 text-sm">Loading shows...</p>
           )}
-          {shows.map((s) => (
-            <div
-              key={s._id}
-              style={{ border: "1px solid #ddd", padding: 12, marginBottom: 8, cursor: "pointer", borderRadius: 6 }}
-              onClick={() => {
-                setActiveShow(s);
-                setView("seats");
-              }}
-            >
-              <strong>{s.title}</strong> — {s.venue} — ₹{s.price}
-              <div style={{ color: "#666", fontSize: 12 }}>{formatDate(s.startTime)}</div>
+
+          {!showsLoading && shows.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+              <p className="text-gray-500 text-sm">No shows yet — create one via POST /api/shows (see README).</p>
             </div>
-          ))}
+          )}
+
+          <div className="flex flex-col gap-3">
+            {shows.map((s) => (
+              <div
+                key={s._id}
+                onClick={() => { setActiveShow(s); setView("seats"); }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-[#0d7561]/30 transition-all group"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-gray-900 group-hover:text-[#0d7561] transition-colors">{s.title}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{s.venue}</p>
+                    <p className="text-xs text-gray-400 mt-1">{formatDate(s.startTime)}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-lg font-bold text-[#0d7561]">₹{s.price}</p>
+                    <p className="text-xs text-gray-400">per seat</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{s.rows} rows &times; {s.seatsPerRow} seats</span>
+                  <span className="text-xs font-medium text-[#0d7561] group-hover:underline">View seats &rarr;</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -463,68 +507,98 @@ export default function App() {
 
   // ---------- RENDER: SEAT MAP ----------
   return (
-    <div style={{ fontFamily: "sans-serif" }}>
+    <div className="min-h-screen bg-[#f0f2f5] font-sans">
       <Nav />
-      <div style={{ maxWidth: 700, margin: "30px auto", padding: 20 }}>
-        <button onClick={() => setView("shows")}>&larr; Back to shows</button>
-        <h2>{activeShow.title}</h2>
-        {message && <p style={{ color: "#333", background: "#fffbcc", padding: 8, borderRadius: 4 }}>{message}</p>}
+      <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {seatsLoading && seats.length === 0 ? (
-          <p>Loading seat map...</p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${activeShow.seatsPerRow}, 36px)`,
-              gap: 6,
-              margin: "20px 0",
-            }}
-          >
-            {seats.map((seat) => {
-              const mine = myHeldSeatIds.includes(seat._id);
-              let bg = "#4caf50"; // free
-              if (seat.status === "booked") bg = "#999";
-              else if (seat.status === "held") bg = mine ? "#2196f3" : "#f44336";
+        {/* Back + title */}
+        <button
+          onClick={() => setView("shows")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#0d7561] transition-colors mb-5"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to shows
+        </button>
 
-              return (
-                <div
-                  key={seat._id}
-                  onClick={() => {
-                    if (seat.status === "free") handleHold(seat._id);
-                    else if (mine) handleRelease(seat._id);
-                  }}
-                  title={seat.status}
-                  style={{
-                    background: bg,
-                    color: "white",
-                    fontSize: 11,
-                    textAlign: "center",
-                    lineHeight: "32px",
-                    borderRadius: 4,
-                    cursor: seat.status === "free" || mine ? "pointer" : "not-allowed",
-                  }}
-                >
-                  {seat.seatLabel}
-                </div>
-              );
-            })}
+        <div className="mb-2">
+          <h2 className="text-2xl font-bold text-gray-900">{activeShow.title}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{activeShow.venue} &mdash; {formatDate(activeShow.startTime)}</p>
+        </div>
+
+        {/* Flash message */}
+        {message && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+            {message}
           </div>
         )}
 
-        <p>
-          <span style={{ color: "#4caf50" }}>■</span> Free &nbsp;
-          <span style={{ color: "#2196f3" }}>■</span> Held by you &nbsp;
-          <span style={{ color: "#f44336" }}>■</span> Held by others &nbsp;
-          <span style={{ color: "#999" }}>■</span> Booked
-        </p>
+        {/* Seat grid card */}
+        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
+          {/* Screen indicator */}
+          <div className="mb-6 text-center">
+            <div className="h-2 bg-gray-200 rounded-full w-3/4 mx-auto mb-1" />
+            <p className="text-xs text-gray-400 uppercase tracking-widest">Screen</p>
+          </div>
+
+          {seatsLoading && seats.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-8">Loading seat map...</p>
+          ) : (
+            <div
+              style={{ gridTemplateColumns: `repeat(${activeShow.seatsPerRow}, minmax(0, 1fr))` }}
+              className="grid gap-1.5"
+            >
+              {seats.map((seat) => {
+                const mine = myHeldSeatIds.includes(seat._id);
+                let cls = "bg-[#0d7561] hover:bg-[#0a5e4d] cursor-pointer"; // free
+                if (seat.status === "booked") cls = "bg-gray-300 cursor-not-allowed";
+                else if (seat.status === "held") cls = mine
+                  ? "bg-blue-500 hover:bg-blue-600 cursor-pointer ring-2 ring-blue-300"
+                  : "bg-red-400 cursor-not-allowed";
+
+                return (
+                  <div
+                    key={seat._id}
+                    onClick={() => {
+                      if (seat.status === "free") handleHold(seat._id);
+                      else if (mine) handleRelease(seat._id);
+                    }}
+                    title={seat.status}
+                    className={`${cls} text-white text-[10px] font-medium text-center py-1.5 rounded transition-colors select-none`}
+                  >
+                    {seat.seatLabel}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#0d7561] inline-block" /> Free</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Held by you</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400 inline-block" /> Held by others</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-300 inline-block" /> Booked</span>
+          </div>
+        </div>
+
+        {/* Confirm & Pay */}
         {myHeldSeatIds.length > 0 && (
-          <button onClick={handleConfirm} disabled={confirmLoading} style={{ padding: "10px 20px" }}>
-            {confirmLoading
-              ? "Processing payment..."
-              : `Confirm & Pay for ${myHeldSeatIds.length} seat(s) — ₹${myHeldSeatIds.length * activeShow.price}`}
-          </button>
+          <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-gray-900">{myHeldSeatIds.length} seat{myHeldSeatIds.length > 1 ? "s" : ""} selected</p>
+              <p className="text-sm text-gray-500">Total: <span className="font-bold text-[#0d7561]">₹{myHeldSeatIds.length * activeShow.price}</span></p>
+            </div>
+            <button
+              onClick={handleConfirm}
+              disabled={confirmLoading}
+              className="bg-[#0d7561] hover:bg-[#0a5e4d] disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+            >
+              {confirmLoading ? "Processing..." : "Confirm & Pay"}
+            </button>
+          </div>
         )}
       </div>
     </div>
