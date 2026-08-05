@@ -104,6 +104,9 @@ router.post("/confirm", requireAuth, async (req, res) => {
       session.endSession();
     }
 
+    const io = req.app.get("io");
+    if (io) io.to(showId.toString()).emit("seats_updated");
+
     res.status(201).json({ booking, transactionRef: payment.transactionRef });
   } catch (err) {
     res.status(500).json({ error: err.message });

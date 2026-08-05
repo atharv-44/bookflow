@@ -46,6 +46,9 @@ router.post("/:seatId/hold", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "Seat is no longer available" });
     }
 
+    const io = req.app.get("io");
+    if (io) io.to(seat.show.toString()).emit("seats_updated");
+
     res.json(seat);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -63,6 +66,10 @@ router.post("/:seatId/release", requireAuth, async (req, res) => {
       { new: true }
     );
     if (!seat) return res.status(409).json({ error: "You don't hold this seat" });
+    
+    const io = req.app.get("io");
+    if (io) io.to(seat.show.toString()).emit("seats_updated");
+
     res.json(seat);
   } catch (err) {
     res.status(500).json({ error: err.message });
