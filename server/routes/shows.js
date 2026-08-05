@@ -1,13 +1,12 @@
 import { Router } from "express";
 import Show from "../models/Show.js";
 import Seat from "../models/Seat.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
-// Create a show and generate its seat grid. In a real app this would be
-// admin-only (add requireAuth + a role check); left open here to keep
-// the demo simple to seed.
-router.post("/", async (req, res) => {
+// Create a show and generate its seat grid. Admin only.
+router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { title, venue, startTime, rows = 5, seatsPerRow = 8, price = 200 } = req.body;
     const show = await Show.create({ title, venue, startTime, rows, seatsPerRow, price });

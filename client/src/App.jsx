@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
+import { io } from "socket.io-client";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
+const socket = io(SOCKET_URL);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function authHeaders(token) {
@@ -93,8 +96,16 @@ export default function App() {
   useEffect(() => {
     if (!activeShow || view !== "seats") return;
     loadSeats(activeShow._id);
-    const interval = setInterval(() => loadSeats(activeShow._id), 3000);
-    return () => clearInterval(interval);
+    
+    // Real-time Socket.IO setup
+    socket.emit("join_show", activeShow._id);
+    
+    const onSeatsUpdated = () => loadSeats(activeShow._id);
+    socket.on("seats_updated", onSeatsUpdated);
+    
+    return () => {
+      socket.off("seats_updated", onSeatsUpdated);
+    };
   }, [activeShow, view, loadSeats]);
 
   // ---------- BOOKINGS ----------
@@ -360,51 +371,155 @@ export default function App() {
 
   // ---------- RENDER: NAV ----------
   const Nav = () => (
-    <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6 font-sans">
+    <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between font-sans">
       {/* Logo */}
-      <div className="flex items-center gap-2 mr-4">
-        <div className="w-8 h-8 rounded-lg bg-[#0d7561] flex items-center justify-center">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-[#0d7561] flex items-center justify-center shadow-sm">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <circle cx="12" cy="12" r="3" />
             <path strokeLinecap="round" d="M12 2v4M12 18v4M2 12h4M18 12h4" />
           </svg>
         </div>
-        <span className="font-bold text-gray-900 text-lg tracking-tight">BookFlow</span>
+        <span className="font-bold text-[#0d7561] text-xl tracking-tight">BookFlow</span>
       </div>
-      {/* Nav links */}
-      <button
-        onClick={() => { setView("shows"); setActiveShow(null); }}
-        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-          view === "shows"
-            ? "bg-[#e6f4f1] text-[#0d7561]"
-            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-        }`}
-      >
-        Shows
-      </button>
-      <button
-        onClick={() => setView("bookings")}
-        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-          view === "bookings"
-            ? "bg-[#e6f4f1] text-[#0d7561]"
-            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-        }`}
-      >
-        My Bookings
-      </button>
-      {/* Spacer + user + logout */}
-      <div className="ml-auto flex items-center gap-3">
-        <span className="text-sm text-gray-500">{user?.name || user?.email}</span>
-        <button
-          onClick={logout}
-          className="text-sm font-medium text-gray-600 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
-        >
-          Log out
-        </button>
+      
+      {/* Right Section */}
+      <div className="flex items-center gap-6">
+        {/* Nav links */}
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => { setView("shows"); setActiveShow(null); }}
+            className={`text-sm font-semibold pb-1 transition-colors border-b-2 ${
+              view === "shows"
+                ? "text-[#0d7561] border-[#0d7561]"
+                : "text-gray-500 border-transparent hover:text-gray-800"
+            }`}
+          >
+            Shows
+          </button>
+          <button
+            onClick={() => setView("bookings")}
+            className={`text-sm font-semibold pb-1 transition-colors border-b-2 ${
+              view === "bookings"
+                ? "text-[#0d7561] border-[#0d7561]"
+                : "text-gray-500 border-transparent hover:text-gray-800"
+            }`}
+          >
+            My Bookings
+          </button>
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setView("admin")}
+              className={`text-sm font-semibold pb-1 transition-colors border-b-2 ${
+                view === "admin"
+                  ? "text-[#0d7561] border-[#0d7561]"
+                  : "text-gray-500 border-transparent hover:text-gray-800"
+              }`}
+            >
+              Admin Dashboard
+            </button>
+          )}
+        </div>
+        
+        {/* Separator */}
+        <div className="hidden sm:block w-px h-6 bg-gray-200"></div>
+        
+        {/* Spacer + user + logout */}
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#e6f4f1] text-[#0d7561] flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <span className="text-sm font-medium text-gray-700">{user?.name || user?.email}</span>
+          </div>
+          <button
+            onClick={logout}
+            className="text-sm font-medium text-gray-600 bg-gray-100 px-4 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     </nav>
   );
+
+  // ---------- RENDER: ADMIN DASHBOARD ----------
+  if (view === "admin") {
+    if (user?.role !== "admin") {
+      setView("shows");
+      return null;
+    }
+
+    const handleCreateShow = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd.entries());
+      setShowsLoading(true);
+      try {
+        const res = await fetch(`${API}/shows`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          setMessage("Show created successfully!");
+          e.target.reset();
+          loadShows();
+        } else {
+          const err = await res.json();
+          setMessage(err.error || "Failed to create show");
+        }
+      } finally {
+        setShowsLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] font-sans">
+        <Nav />
+        <div className="max-w-2xl mx-auto px-6 py-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Create New Show</h3>
+            <form onSubmit={handleCreateShow} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" placeholder="e.g. Inception" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                <input name="venue" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" placeholder="e.g. Cinema 1" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input name="startTime" type="datetime-local" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rows</label>
+                  <input name="rows" type="number" defaultValue="5" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Seats/Row</label>
+                  <input name="seatsPerRow" type="number" defaultValue="8" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+                  <input name="price" type="number" defaultValue="200" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-[#0d7561] focus:border-[#0d7561] outline-none" />
+                </div>
+              </div>
+              <button type="submit" disabled={showsLoading} className="mt-2 bg-[#0d7561] text-white py-2 rounded-lg font-medium hover:bg-[#0a5e4d] transition-colors disabled:opacity-50">
+                {showsLoading ? "Creating..." : "Create Show"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ---------- RENDER: BOOKINGS ----------
   if (view === "bookings") {
@@ -460,10 +575,34 @@ export default function App() {
   // ---------- RENDER: SHOWS LIST ----------
   if (view === "shows" || !activeShow) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] font-sans">
+      <div className="min-h-screen bg-[#f8f9fa] font-sans pb-12">
         <Nav />
-        <div className="max-w-xl mx-auto px-4 py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Shows</h2>
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          
+          {/* Header */}
+          <div className="mb-10">
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">Now Showing</h1>
+            <p className="text-gray-500 max-w-2xl text-base leading-relaxed">
+              Discover the latest cinematic masterpieces and live performances. Premium seating, seamless booking.
+            </p>
+          </div>
+
+          {/* Filters & Search */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="bg-[#0d7561] text-white px-5 py-2 rounded-full text-sm font-semibold shadow-sm">All Categories</button>
+              <button className="bg-gray-100 text-gray-700 px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">Sci-Fi</button>
+              <button className="bg-gray-100 text-gray-700 px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">Drama</button>
+              <button className="bg-gray-100 text-gray-700 px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">Action</button>
+              <button className="bg-gray-100 text-gray-700 px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">Live Concerts</button>
+            </div>
+            <div className="relative w-full md:w-72">
+              <span className="absolute inset-y-0 left-3 flex items-center text-gray-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+              </span>
+              <input type="text" placeholder="Search shows..." className="w-full border border-gray-300 rounded-full pl-10 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#0d7561] focus:border-transparent transition shadow-sm" />
+            </div>
+          </div>
 
           {showsLoading && (
             <p className="text-gray-500 text-sm">Loading shows...</p>
@@ -475,31 +614,68 @@ export default function App() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
-            {shows.map((s) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {shows.map((s, idx) => (
               <div
                 key={s._id}
                 onClick={() => { setActiveShow(s); setView("seats"); }}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-[#0d7561]/30 transition-all group"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-gray-900 group-hover:text-[#0d7561] transition-colors">{s.title}</p>
-                    <p className="text-sm text-gray-500 mt-0.5">{s.venue}</p>
-                    <p className="text-xs text-gray-400 mt-1">{formatDate(s.startTime)}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-lg font-bold text-[#0d7561]">₹{s.price}</p>
-                    <p className="text-xs text-gray-400">per seat</p>
+                {/* Image Area */}
+                <div className="relative h-80 w-full bg-gray-100 overflow-hidden">
+                  {/* Using a predictable random image from Picsum based on show ID */}
+                  <img src={`https://picsum.photos/seed/${s._id}/400/600`} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                  <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-gray-800 flex items-center gap-1 shadow-sm">
+                    <svg className="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                    4.9
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">{s.rows} rows &times; {s.seatsPerRow} seats</span>
-                  <span className="text-xs font-medium text-[#0d7561] group-hover:underline">View seats &rarr;</span>
+                
+                {/* Details Area */}
+                <div className="p-5 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-[#0d7561] transition-colors line-clamp-1">{s.title}</h3>
+                    <span className="font-bold text-[#0d7561] shrink-0">₹{s.price}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-5">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                    <span className="line-clamp-1">{s.venue}</span>
+                  </div>
+                  
+                  <div className="mt-auto pt-4 border-t border-gray-100 flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Next Show</p>
+                      <p className="text-sm font-semibold text-gray-800">{formatDate(s.startTime)}</p>
+                    </div>
+                    <div className="w-9 h-9 rounded-lg bg-[#0d7561] text-white flex items-center justify-center shrink-0 group-hover:bg-[#0a5e4d] transition-colors shadow-sm">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" /></svg>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+
+          <div className="mt-14 text-center">
+            <button className="bg-[#e6f4f1] text-[#0d7561] font-semibold px-8 py-3 rounded-xl hover:bg-[#d5ebe5] transition-colors">
+              Load More Shows
+            </button>
+          </div>
+
+          {/* Footer */}
+          <footer className="mt-20 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+            <div>
+              <span className="font-bold text-[#0d7561]">BookFlow</span> &copy; 2024 BookFlow. All rights reserved.
+            </div>
+            <div className="flex flex-wrap justify-center gap-6">
+              <a href="#" className="hover:text-gray-900 transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-gray-900 transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-gray-900 transition-colors">Help Center</a>
+              <a href="#" className="hover:text-gray-900 transition-colors">Contact Us</a>
+            </div>
+          </footer>
+
         </div>
       </div>
     );
