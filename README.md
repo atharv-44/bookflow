@@ -1,81 +1,99 @@
-# BookFlow — High-Concurrency Ticket Reservation Platform
+# BookFlow
 
-A seat-booking backend focused on solving the double-booking race
-condition properly — not another BookMyShow UI clone.
+A full-stack movie/event seat booking application built as a Computer Engineering placement project. BookFlow lets users browse shows, hold and book seats in real time, and view their booking history — while an admin panel lets privileged users manage the show catalogue.
 
-**Read [`DESIGN_DECISIONS.md`](./DESIGN_DECISIONS.md) before your
-interviews.** It has the exact reasoning behind every hard decision
-in this project, written to match what we discussed step by step.
+## Tech Stack
 
-## Core loop (what's built)
-- Signup / login (JWT auth)
-- Create a show (auto-generates a seat grid)
-- List shows, view seat map
-- Hold a seat (atomic, race-condition-safe, 2-minute expiry)
-- Release a held seat
-- Confirm booking (simulated payment + transactional seat/booking write)
-- View your booking history
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Node.js, Express |
+| Database | MongoDB Atlas (Mongoose ODM) |
+| Auth | JWT (jsonwebtoken), bcryptjs |
+| Real-Time | Socket.IO (WebSockets) |
+| Testing | Jest, Supertest, mongodb-memory-server |
 
-## Not built yet (intentional — see design doc "Known gaps")
-QR codes, email confirmation, and an admin dashboard are left for
-later polish, once the core loop is fully understood and solid.
+## Getting Started
 
-## Running locally
+```bash
+# 1. Clone and install
+git clone <repo-url>
+cd bookflow
 
-You'll need MongoDB running locally (or a free MongoDB Atlas cluster).
+cd server && npm install
+cd ../client && npm install
 
-### Server
+# 2. Configure environment
+# Create server/.env with:
+#   MONGO_URI=<your MongoDB Atlas connection string>
+#   JWT_SECRET=<a long random secret>
+
+# 3. Run
+cd server && node index.js        # Backend on :5000
+cd client && npm run dev          # Frontend on :5173
+```
+
+## Architecture Highlights
+
+### (a) Atomic Seat Locking — Preventing Race Conditions
+
+The core booking problem: two users click the same seat at the same instant. A naive read-then-write implementation has a window between the "is the seat free?" check and the "mark it taken" write — which can be exploited under concurrent load.
+
+BookFlow solves this with a **single atomic `findOneAndUpdate`** in MongoDB:
+
+```js
+Seat.findOneAndUpdate(
+  { _id: seatId, $or: [{ status: "free" }, { status: "held", heldUntil: { $lt: now } }] },
+  { $set: { status: "held", heldBy: userId, heldUntil } },
+  { new: true }
+)
+```
+
+MongoDB executes this as one indivisible operation. If two requests race, exactly one gets a matching document back; the other gets `null` and returns a `409 Conflict`. This is verified by an automated concurrency test (`tests/concurrency.test.js`) that fires two simultaneous HTTP requests via `Promise.all()` and asserts the `[200, 409]` outcome.
+
+### (b) RBAC with DB-Verified Admin Checks
+
+Role-based access control is implemented across three layers:
+
+1. **Database**: `User` schema has a `role` field (`"user"` | `"admin"`, default `"user"`).
+2. **JWT**: Role is embedded in the signed token so the frontend can show/hide the Admin tab without an extra round-trip.
+3. **Middleware**: `requireAdmin` fetches the user **fresh from the database** on every admin request — it does not trust the JWT's cached role. This means a demoted admin is blocked with `403 Forbidden` on their very next request, with no need to wait for token expiry.
+
+Admin promotion is done out-of-band via a CLI script (`scripts/promoteAdmin.js`), not through an API route — so no client can self-promote by injecting `role` into a request body.
+
+### (c) Real-Time Seat Sync via WebSockets
+
+Socket.IO pushes seat state changes to all clients watching the same show:
+
+1. When a user opens a seat grid, the frontend emits `join_show(showId)` to subscribe to a per-show room.
+2. After every atomic hold, release, or confirmed booking, the backend emits `seats_updated` to that room.
+3. All subscribed clients immediately re-fetch seat state — no polling required.
+
+This replaces a previous 3-second `setInterval` and ensures seat availability is always current across multiple simultaneous users.
+
+## Running Tests
+
 ```bash
 cd server
-npm install
-cp .env.example .env   # edit MONGO_URI / JWT_SECRET if needed
-npm run dev             # http://localhost:5000
+set NODE_OPTIONS=--experimental-vm-modules  # Windows (use export on Mac/Linux)
+npx jest
 ```
 
-### Client
+Expected output:
+```
+PASS tests/concurrency.test.js
+  Concurrency - Atomic Seat Booking
+    ✓ should prevent double-booking when two users try to hold the same seat at the same time
+
+Tests: 1 passed, 1 total
+```
+
+## Admin Access
+
 ```bash
-cd client
-npm install
-npm run dev              # http://localhost:5173
+cd server
+node scripts/promoteAdmin.js your@email.com
+# → Success! User your@email.com is now an admin.
 ```
 
-### Seed a show to test with
-```bash
-curl -X POST http://localhost:5000/api/shows \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Inception","venue":"PVR Phoenix","startTime":"2026-08-01T18:00:00Z","rows":5,"seatsPerRow":8,"price":250}'
-```
-
-## Testing the race condition yourself (do this — it's the whole point)
-1. Open the client in two different browser windows, sign up as two
-   different users.
-2. Both select the same show.
-3. Click the SAME seat in both windows as close together as you can.
-4. One will succeed (turns blue = held by you), the other will get
-   "Seat is no longer available" — that's the atomic update working.
-5. Wait 2 minutes without confirming — watch the seat return to free
-   (green) on the next poll, since the hold expired.
-
-Being able to demo this live, and explain what's happening, is worth
-more in an interview than any amount of polish.
-
-## API Reference
-
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/signup` | No | Create account |
-| POST | `/api/auth/login` | No | Log in |
-| POST | `/api/shows` | No | Create a show + seat grid |
-| GET | `/api/shows` | No | List shows |
-| GET | `/api/shows/:id/seats` | No | Get seat map for a show |
-| POST | `/api/seats/:seatId/hold` | Yes | Atomically hold a seat |
-| POST | `/api/seats/:seatId/release` | Yes | Release your own held seat |
-| POST | `/api/bookings/confirm` | Yes | Pay + confirm booking (transaction) |
-| GET | `/api/bookings/my` | Yes | Your booking history |
-
-## Next steps to extend (good v2 talking points)
-1. Replace client polling with WebSockets for instant seat updates.
-2. Add a proactive cleanup job (cron or change stream) for expired holds.
-3. Add QR ticket generation and email confirmation.
-4. Add an admin role for show management.
-5. Add a saga/compensating-transaction pattern for payment edge cases.
+Log out and log back in to receive a fresh JWT with the updated role. The **Admin Dashboard** tab will appear in the navigation bar, allowing you to create new shows with a custom seat grid.

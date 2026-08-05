@@ -468,6 +468,8 @@ export default function App() {
           setMessage("Show created successfully!");
           e.target.reset();
           loadShows();
+        } else if (res.status === 403) {
+          setMessage("⚠️ Your admin access has been revoked — please log out and log in again.");
         } else {
           const err = await res.json();
           setMessage(err.error || "Failed to create show");
