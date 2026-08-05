@@ -518,6 +518,16 @@ export default function App() {
               </button>
             </form>
           </div>
+
+          {message && (
+            <div className={`mt-4 border text-sm rounded-xl px-4 py-3 ${
+              message.startsWith("⚠️")
+                ? "bg-red-50 border-red-200 text-red-800"
+                : "bg-green-50 border-green-200 text-green-800"
+            }`}>
+              {message}
+            </div>
+          )}
         </div>
       </div>
     );
