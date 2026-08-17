@@ -6,7 +6,7 @@ import seatRoutes from "./routes/seats.js";
 import bookingRoutes from "./routes/bookings.js";
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);

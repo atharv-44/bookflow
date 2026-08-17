@@ -4,3 +4,4 @@ dist/
 .DS_Store
 server/scripts/cleanupTestData.js
 server/scripts/deleteInception.js
+client/.env
