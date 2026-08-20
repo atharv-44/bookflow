@@ -144,21 +144,32 @@ export default function App() {
     if (err) return setFormError(err);
 
     setAuthLoading(true);
+
+    // Cold-start warning: Render free tier spins down after inactivity.
+    // If the first request takes >8s, show an honest message so users
+    // don't think the site is broken while the backend wakes up.
+    const slowTimer = setTimeout(() => {
+      setFormError("The server is waking up (this can take ~30s on the free tier) — please wait…");
+    }, 8000);
+
     try {
       const res = await fetch(`${API}/auth/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
+      clearTimeout(slowTimer);
       const data = await res.json();
       if (!res.ok) {
         setFormError(data.error || "Something went wrong");
         return;
       }
+      setFormError("");
       setToken(data.token);
       setUser(data.user);
     } catch {
-      setFormError("Could not reach the server. Is it running on localhost:5000?");
+      clearTimeout(slowTimer);
+      setFormError("Could not reach the server. Please try again in a moment.");
     } finally {
       setAuthLoading(false);
     }
