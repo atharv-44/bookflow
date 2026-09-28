@@ -4,4 +4,6 @@ dist/
 .DS_Store
 server/scripts/cleanupTestData.js
 server/scripts/deleteInception.js
+server/scripts/smokeTest.js
 client/.env
+INTERVIEW_NOTES.md
