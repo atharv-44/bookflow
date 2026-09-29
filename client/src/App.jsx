@@ -751,9 +751,12 @@ export default function App() {
             >
               {seats.map((seat) => {
                 const mine = myHeldSeatIds.includes(seat._id);
+                const isExpired = seat.status === "held" && seat.heldUntil && new Date(seat.heldUntil) < new Date();
+                const effectiveStatus = isExpired ? "free" : seat.status;
+
                 let cls = "bg-[#0d7561] hover:bg-[#0a5e4d] cursor-pointer"; // free
-                if (seat.status === "booked") cls = "bg-gray-300 cursor-not-allowed";
-                else if (seat.status === "held") cls = mine
+                if (effectiveStatus === "booked") cls = "bg-gray-300 cursor-not-allowed";
+                else if (effectiveStatus === "held") cls = mine
                   ? "bg-blue-500 hover:bg-blue-600 cursor-pointer ring-2 ring-blue-300"
                   : "bg-red-400 cursor-not-allowed";
 
@@ -761,10 +764,10 @@ export default function App() {
                   <div
                     key={seat._id}
                     onClick={() => {
-                      if (seat.status === "free") handleHold(seat._id);
+                      if (effectiveStatus === "free") handleHold(seat._id);
                       else if (mine) handleRelease(seat._id);
                     }}
-                    title={seat.status}
+                    title={effectiveStatus}
                     className={`${cls} text-white text-[10px] font-medium text-center py-1.5 rounded transition-colors select-none`}
                   >
                     {seat.seatLabel}

@@ -38,13 +38,42 @@ router.get("/:id/seats", async (req, res) => {
   const seats = await Seat.aggregate([
     { $match: { show: (await import("mongoose")).default.Types.ObjectId.createFromHexString(req.params.id) } },
     {
+      // Treat expired holds as "free" at read time.
+      // The lazy reclaim in the hold endpoint will clean up the DB document
+      // the next time someone actually tries to grab the seat. This $addFields
+      // stage just makes sure users never see a "held by others" seat that is
+      // actually past its expiry window — they couldn't click it if we didn't
+      // do this, which would prevent the lazy reclaim from ever triggering.
       $addFields: {
-        _rowPart: {
-          $rtrim: {
-            input: "$seatLabel",
-            chars: "0123456789",
+        status: {
+          $cond: {
+            if: {
+              $and: [
+                { $eq: ["$status", "held"] },
+                { $lt: ["$heldUntil", new Date()] },
+              ],
+            },
+            then: "free",
+            else: "$status",
           },
         },
+        heldBy: {
+          $cond: {
+            if: {
+              $and: [
+                { $eq: ["$status", "held"] },
+                { $lt: ["$heldUntil", new Date()] },
+              ],
+            },
+            then: null,
+            else: "$heldBy",
+          },
+        },
+      },
+    },
+    {
+      $addFields: {
+        _rowPart: { $rtrim: { input: "$seatLabel", chars: "0123456789" } },
         _seatNum: {
           $toInt: {
             $ltrim: {
