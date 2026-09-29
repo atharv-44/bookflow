@@ -689,7 +689,7 @@ export default function App() {
           {/* Footer */}
           <footer className="mt-20 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
             <div>
-              <span className="font-bold text-[#0d7561]">BookFlow</span> &copy; 2024 BookFlow. All rights reserved.
+              <span className="font-bold text-[#0d7561]">BookFlow</span> &copy; {new Date().getFullYear()} BookFlow. All rights reserved.
             </div>
             <div className="flex flex-wrap justify-center gap-6">
               <a href="#" className="hover:text-gray-900 transition-colors">Privacy Policy</a>
